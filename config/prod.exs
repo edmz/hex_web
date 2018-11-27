@@ -1,34 +1,56 @@
 use Mix.Config
 
-config :hex_web, HexWeb.Endpoint,
-  http: [port: {:system, "PORT"}],
-  url: [host: System.get_env("HEX_URL"), scheme: "https", port: 443],
-  force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]],
-  cache_static_manifest: "priv/static/manifest.json",
-  secret_key_base: {:system, "HEX_SECRET_KEY_BASE"}
+config :hexpm,
+  secret: "${HEXPM_SECRET}",
+  private_key: "${HEXPM_SIGNING_KEY}",
+  s3_bucket: "${HEXPM_S3_BUCKET}",
+  docs_bucket: "${HEXPM_DOCS_BUCKET}",
+  logs_buckets: "${HEXPM_LOGS_BUCKETS}",
+  docs_url: "${HEXPM_DOCS_URL}",
+  cdn_url: "${HEXPM_CDN_URL}",
+  email_host: "${HEXPM_EMAIL_HOST}",
+  ses_rate: "${HEXPM_SES_RATE}",
+  fastly_key: "${HEXPM_FASTLY_KEY}",
+  fastly_hexrepo: "${HEXPM_FASTLY_HEXREPO}",
+  billing_key: "${HEXPM_BILLING_KEY}",
+  billing_url: "${HEXPM_BILLING_URL}",
+  levenshtein_threshold: "${HEXPM_LEVENSHTEIN_THRESHOLD}",
+  store_impl: Hexpm.Store.S3,
+  billing_impl: Hexpm.Billing.Hexpm,
+  cdn_impl: Hexpm.CDN.Fastly,
+  tmp_dir: "tmp"
 
-config :hex_web, HexWeb.Repo,
-  adapter: Ecto.Adapters.Postgres,
-  url: {:system, "DATABASE_URL"},
-  pool_size: 20
+config :hexpm, HexpmWeb.Endpoint,
+  http: [compress: true],
+  url: [scheme: "https", port: 443],
+  load_from_system_env: true,
+  cache_static_manifest: "priv/static/cache_manifest.json"
 
-config :comeonin,
-  bcrypt_log_rounds: 12
+config :hexpm, Hexpm.RepoBase, ssl: true
+
+config :bcrypt_elixir, log_rounds: 12
 
 config :rollbax,
-  access_token: System.get_env("ROLLBAR_ACCESS_TOKEN"),
-  environment: to_string(Mix.env),
-  enabled: true
+  access_token: "${HEXPM_ROLLBAR_ACCESS_TOKEN}",
+  environment: to_string(Mix.env()),
+  enabled: true,
+  enable_crash_reports: true
 
-config :logger,
-  backends: [Rollbax.Logger, :console]
+config :hexpm,
+  topologies: [
+    kubernetes: [
+      strategy: Cluster.Strategy.Kubernetes,
+      config: [
+        mode: :dns,
+        kubernetes_node_basename: "hexpm",
+        kubernetes_selector: "app=hexpm",
+        polling_interval: 10_000
+      ]
+    ]
+  ]
 
-config :logger, Rollbax.Logger,
-  level: :error
+config :phoenix, :serve_endpoints, true
 
-# Don't include date time on heroku
-config :logger, :console,
-  format: "[$level] $message\n"
+config :sasl, sasl_error_logger: false
 
-config :logger,
-  level: :warn
+config :logger, level: :info

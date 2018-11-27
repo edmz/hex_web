@@ -1,14 +1,34 @@
+dist: trusty
 language: elixir
-elixir: 1.3.1
-otp_release: 18.3
-sudo: false
+elixir: 1.7.2
+otp_release: 21.0
 addons:
-  postgresql: "9.4"
+  postgresql: 9.6
+env:
+  global:
+    - MIX_ENV=test
+    - HEXPM_PATH=..
+    - HEXWEB_PATH=..
+    - HEX_ELIXIR=v1.6.6
+    - HEX_ELIXIR_PATH=hex_elixir
+  matrix:
+    - HEX_VERSION=master
+    - HEX_VERSION=v0.18.1
+    - HEX_VERSION=v0.17.8
+    - HEX_VERSION=v0.16.1
+    - HEX_VERSION=v0.15.0
+    - HEX_VERSION=v0.14.1
+before_install:
+  - wget https://repo.hex.pm/builds/elixir/${HEX_ELIXIR}.zip
+  - unzip -d hex_elixir ${HEX_ELIXIR}.zip
+before_script:
+  - git clone https://github.com/hexpm/hex hex -b ${HEX_VERSION} --depth 1
 script:
-  - MIX_ENV=test mix ecto.create
   - mix test --include integration
-  - MIX_ENV=test mix run priv/repo/seeds.exs
-  - git clone https://github.com/hexpm/hex ../hex && cd ../hex && mix deps.get && mix test --include integration
+  - sudo cat /var/log/postgresql/postgresql-9.6-main.log
+  - mix run priv/repo/seeds.exs
+  - cd hex; PATH=$(pwd)/../hex_elixir/bin:${PATH} ../hex_elixir/bin/mix deps.get; cd ..
+  - cd hex; PATH=$(pwd)/../hex_elixir/bin:${PATH} ../hex_elixir/bin/mix test --include integration; cd ..
 notifications:
   recipients:
-    - eric.meadows.jonsson@gmail.com
+  - eric.meadows.jonsson@gmail.com

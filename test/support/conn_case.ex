@@ -1,4 +1,4 @@
-defmodule HexWeb.ConnCase do
+defmodule HexpmWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -20,42 +20,40 @@ defmodule HexWeb.ConnCase do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
 
-      alias HexWeb.Repo
+      alias Hexpm.{Fake, Repo}
+      alias HexpmWeb.Router.Helpers, as: Routes
+
       import Ecto
       import Ecto.Query, only: [from: 2]
-
-      import HexWeb.Router.Helpers
-      import HexWeb.TestHelpers
+      import Hexpm.{Case, Factory, TestHelpers}
       import unquote(__MODULE__)
 
       # The default endpoint for testing
-      @endpoint HexWeb.Endpoint
+      @endpoint HexpmWeb.Endpoint
     end
   end
 
-  setup tags do
-    opts = tags |> Map.take([:isolation]) |> Enum.to_list()
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(HexWeb.Repo, opts)
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Hexpm.RepoBase)
+    Hexpm.Case.reset_store()
+    Bamboo.SentEmail.reset()
+    :ok
   end
 
-  setup tags do
-    if tags[:integration] && Application.get_env(:hex_web, :s3_bucket) do
-      Application.put_env(:hex_web, :store_impl, HexWeb.Store.S3)
-      on_exit fn -> Application.put_env(:hex_web, :store_impl, HexWeb.Store.Local) end
-    end
-
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+  def test_login(conn, user) do
+    Plug.Test.init_test_session(conn, %{"user_id" => user.id})
   end
 
-  def key_for(username) when is_binary(username) do
-    HexWeb.Repo.get_by!(HexWeb.User, username: username)
-    |> key_for
+  def last_session() do
+    import Ecto.Query
+
+    from(s in Hexpm.Accounts.Session, order_by: [desc: s.id], limit: 1)
+    |> Hexpm.Repo.one()
   end
 
-  def key_for(user) do
-    key = user
-          |> HexWeb.Key.build(%{name: "any_key_name"})
-          |> HexWeb.Repo.insert!
-    key.user_secret
+  def json_post(conn, path, params) do
+    conn
+    |> Plug.Conn.put_req_header("content-type", "application/json")
+    |> Phoenix.ConnTest.dispatch(HexpmWeb.Endpoint, :post, path, Jason.encode!(params))
   end
 end

@@ -1,170 +1,592 @@
-defmodule SampleData do
-  def checksum(package) do
-    :crypto.hash(:sha256, package) |> Base.encode16
-  end
+import Hexpm.Factory
 
-  def create_user(username, email, password) do
-    HexWeb.User.build(%{username: username, email: email, password: password}, true)
-    |> HexWeb.Repo.insert!
-  end
+alias Hexpm.Accounts.Users
+alias Hexpm.Repository.{PackageDependant, PackageDownload, ReleaseDownload}
 
-  def last_month do
-    {today, _time} = :calendar.universal_time()
-    today_days = :calendar.date_to_gregorian_days(today)
-    :calendar.gregorian_days_to_date(today_days - 35)
-  end
-end
+Hexpm.Fake.start()
 
-alias HexWeb.Package
-alias HexWeb.Release
-alias HexWeb.Download
-alias HexWeb.PackageDownload
-alias HexWeb.ReleaseDownload
+lorem =
+  "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-lorem = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+password = &Bcrypt.hash_pwd_salt/1
 
-HexWeb.Repo.transaction(fn ->
-  eric = SampleData.create_user("eric", "eric@example.com", "eric")
-  jose = SampleData.create_user("jose", "jose@example.com", "jose")
-  joe = SampleData.create_user("joe", "joe@example.com", "joe")
-  justin = SampleData.create_user("justin", "justin@example.com", "justin")
+Hexpm.Repo.transaction(fn ->
+  # user_secret: "2cd6d09334d4b00a2be4d532342b799b"
+  insert(
+    :key,
+    user_id: Users.get("hexdocs").id,
+    secret_first: "e65e2dbb7e22694dc577e7b3d3328ff4",
+    secret_second: "aebb59509b50226077c81216c2eba85b"
+  )
 
-  if eric == nil or jose == nil or joe == nil or justin == nil do
-    IO.puts "\nThere has been an error creating the sample users.\nIf the error says '... already taken' hex_web was probably already set up."
-  end
+  eric =
+    insert(
+      :user,
+      username: "eric",
+      emails: [build(:email, email: "eric@example.com")],
+      password: password.("ericric")
+    )
 
-  unless eric == nil do
-    decimal =
-      Package.build(eric, %{
-        "name" => "decimal",
-        "meta" => %{
-          "maintainers" => ["Eric Meadows-Jönsson"],
-          "licenses" => ["Apache 2.0", "MIT"],
-          "links" => %{"Github" => "http://example.com/github",
-                   "Documentation" => "http://example.com/documentation"},
-          "description" => "Arbitrary precision decimal arithmetic for Elixir"}})
-      |> HexWeb.Repo.insert!
+  jose =
+    insert(
+      :user,
+      username: "jose",
+      emails: [build(:email, email: "jose@example.com")],
+      password: password.("josejose")
+    )
 
-    Release.build(decimal, %{"version" => "0.0.1", "app" => "decimal", "meta" => %{"app" => "decimal", "build_tools" =>  ["mix"]}}, SampleData.checksum("decimal 0.0.1")) |> HexWeb.Repo.insert!
-    Release.build(decimal, %{"version" => "0.0.2", "app" => "decimal", "meta" => %{"app" => "decimal", "build_tools" =>  ["mix"]}}, SampleData.checksum("decimal 0.0.2")) |> HexWeb.Repo.insert!
-    Release.build(decimal, %{"version" => "0.1.0", "app" => "decimal", "meta" => %{"app" => "decimal", "build_tools" =>  ["mix"]}}, SampleData.checksum("decimal 0.1.0")) |> HexWeb.Repo.insert!
+  joe =
+    insert(
+      :user,
+      username: "joe",
+      emails: [build(:email, email: "joe@example.com")],
+      password: password.("joejoejoe")
+    )
 
-    postgrex =
-      Package.build(eric, %{
-        "name" => "postgrex",
-        "meta" => %{
-          "maintainers" => ["Eric Meadows-Jönsson", "José Valim"],
-          "licenses" => ["Apache 2.0"],
-          "links" => %{"Github" => "http://example.com/github"},
-          "description" => lorem}})
-      |> HexWeb.Repo.insert!
+  justin =
+    insert(
+      :user,
+      username: "justin",
+      emails: [build(:email, email: "justin@example.com")],
+      password: password.("justinjustin")
+    )
 
-    Release.build(postgrex, %{"version" => "0.0.1", "app" => "postgrex", "meta" => %{"app" => "postgrex", "build_tools" => ["mix"]}}, SampleData.checksum("postgrex 0.0.1")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "decimal", "app" => "decimal", "requirement" => "~> 0.0.1", "optional" => false}]
-    Release.build(postgrex, %{"version" => "0.0.2", "app" => "postgrex", "requirements" => reqs, "meta" => %{"app" => "postgrex", "build_tools" => ["mix"]}}, SampleData.checksum("postgrex 0.0.2")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "decimal", "app" => "decimal", "requirement" => "0.1.0", "optional" => false}]
-    Release.build(postgrex, %{"version" => "0.1.0", "app" => "postgrex", "requirements" => reqs, "meta" => %{"app" => "postgrex", "build_tools" => ["mix"]}}, SampleData.checksum("postgrex 0.1.0")) |> HexWeb.Repo.insert!
-  end
+  decimal =
+    insert(
+      :package,
+      name: "decimal",
+      package_owners: [build(:package_owner, user: eric)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: ["Apache 2.0", "MIT"],
+          links: %{
+            "Github" => "http://example.com/github",
+            "Documentation" => "http://example.com/documentation"
+          },
+          description: "Arbitrary precision decimal arithmetic for Elixir"
+        )
+    )
 
-  unless jose == nil do
-    ecto =
-      Package.build(jose, %{
-        "name" => "ecto",
-        "meta" => %{
-          "maintainers" => ["Eric Meadows-Jönsson", "José Valim"],
-          "licenses" => [],
-          "links" => %{"Github" => "http://example.com/github"},
-          "description" => lorem}})
-      |> HexWeb.Repo.insert!
+  insert(
+    :release,
+    package: decimal,
+    version: "0.0.1",
+    meta:
+      build(
+        :release_metadata,
+        app: "decimal",
+        build_tools: ["mix"]
+      )
+  )
 
-    Release.build(ecto, %{"version" => "0.0.1", "app" => "ecto", "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.0.1")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "~> 0.0.1", "optional" => false}]
-    Release.build(ecto, %{"version" => "0.0.2", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.0.2")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "~> 0.0.2", "optional" => false}]
-    Release.build(ecto, %{"version" => "0.1.0", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.1.0")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "~> 0.1.0", "optional" => false}]
-    Release.build(ecto, %{"version" => "0.1.1", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.1.1")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "== 0.1.0", "optional" => false}, %{"name" => "decimal", "app" => "decimal", "requirement" => "0.1.0", "optional" => false}]
-    Release.build(ecto, %{"version" => "0.1.2", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.1.2")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "0.1.0", "optional" => false}, %{"name" => "decimal", "app" => "decimal", "requirement" => "0.1.0", "optional" => false}]
-    Release.build(ecto, %{"version" => "0.1.3", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.1.3")) |> HexWeb.Repo.insert!
-    reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "~> 0.1.0", "optional" => false}, %{"name" => "decimal", "app" => "decimal", "requirement" => "~> 0.1.0", "optional" => false}]
-    rel = Release.build(ecto, %{"version" => "0.2.0", "app" => "ecto", "requirements" => reqs, "meta" => %{"app" => "ecto", "build_tools" => ["mix"]}}, SampleData.checksum("ecto 0.2.0")) |> HexWeb.Repo.insert!
+  insert(
+    :release,
+    package: decimal,
+    version: "0.0.2",
+    meta:
+      build(
+        :release_metadata,
+        app: "decimal",
+        build_tools: ["mix"]
+      )
+  )
 
-    {:ok, yesterday} = Ecto.Type.load(Ecto.Date, HexWeb.Utils.yesterday)
-    %Download{release_id: rel.id, downloads: 42, day: yesterday}
-    |> HexWeb.Repo.insert!
-  end
+  decimal_release =
+    insert(
+      :release,
+      package: decimal,
+      version: "0.1.0",
+      meta:
+        build(
+          :release_metadata,
+          app: "decimal",
+          build_tools: ["mix"]
+        )
+    )
 
-  unless joe == nil do
-    Enum.each(1..100, fn(index) ->
-      ups =
-        Package.build(joe, %{
-          "name" => "ups_" <> to_string(index),
-          "meta" => %{
-            "maintainers" => ["Joe Somebody"],
-            "licenses" => [],
-            "links" => %{"Github" => "http://example.com/github"},
-            "description" => lorem}})
-        |> HexWeb.Repo.insert!
+  insert(
+    :download,
+    release: decimal_release,
+    downloads: 1_200_000,
+    day: Hexpm.Utils.utc_days_ago(180)
+  )
 
-      rel1 = Release.build(ups, %{"version" => "0.0.1", "app" => "ups", "meta" => %{"app" => "ups", "build_tools" => ["mix"]}}, SampleData.checksum("ups 0.0.1")) |> HexWeb.Repo.insert!
-      reqs = [%{"name" => "postgrex", "app" => "postgrex", "requirement" => "~> 0.1.0", "optional" => false}, %{"name" => "decimal", "app" => "postgrex", "requirement" => "~> 0.1.0", "optional" => false}]
-      rel2 = Release.build(ups, %{"version" => "0.2.0", "app" => "ups", "requirements" => reqs, "meta" => %{"app" => "ups", "build_tools" => ["mix"]}}, SampleData.checksum("ups 0.2.0")) |> HexWeb.Repo.insert!
+  insert(
+    :download,
+    release: decimal_release,
+    downloads: 200_000,
+    day: Hexpm.Utils.utc_days_ago(90)
+  )
 
-      {:ok, last_month} = Ecto.Type.load(Ecto.Date, SampleData.last_month)
-      %Download{release_id: rel1.id, downloads: div(index, 2), day: last_month}
-      |> HexWeb.Repo.insert!
+  insert(
+    :download,
+    release: decimal_release,
+    downloads: 56_000,
+    day: Hexpm.Utils.utc_days_ago(35)
+  )
 
-      {:ok, yesterday} = Ecto.Type.load(Ecto.Date, HexWeb.Utils.yesterday)
-      %Download{release_id: rel2.id, downloads: div(index, 2) + rem(index, 2), day: yesterday}
-      |> HexWeb.Repo.insert!
-    end)
-  end
+  insert(:download, release: decimal_release, downloads: 1_000, day: Hexpm.Utils.utc_yesterday())
 
-  unless justin == nil do
-    nerves =
-      Package.build(justin, %{
-        "name" => "nerves",
-        "meta" => %{
-          "maintainers" => ["Justin Schneck", "Frank Hunleth"],
-          "licenses" => ["Apache 2.0"],
-          "links" => %{"Github" => "http://example.com/github"},
-          "description" => lorem,
-          "extra" => %{
-            "foo" => %{"bar" => "baz"},
-            "key" => "value 1"}}})
-      |> HexWeb.Repo.insert!
+  postgrex =
+    insert(
+      :package,
+      name: "postgrex",
+      package_owners: [build(:package_owner, user: eric), build(:package_owner, user: jose)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: ["Apache 2.0"],
+          links: %{"Github" => "http://example.com/github"},
+          description: lorem
+        )
+    )
 
-    rel = Release.build(nerves, %{"version" => "0.0.1", "app" => "nerves", "meta" => %{"app" => "nerves", "build_tools" => ["mix"]}}, SampleData.checksum("nerves 0.0.1")) |> HexWeb.Repo.insert!
+  insert(
+    :release,
+    package: postgrex,
+    version: "0.0.1",
+    meta:
+      build(
+        :release_metadata,
+        app: "postgrex",
+        build_tools: ["mix"]
+      )
+  )
 
-    {:ok, yesterday} = Ecto.Type.load(Ecto.Date, HexWeb.Utils.yesterday)
-    %Download{release_id: rel.id, downloads: 20, day: yesterday}
-    |> HexWeb.Repo.insert!
+  insert(
+    :release,
+    package: postgrex,
+    version: "0.0.2",
+    requirements: [
+      build(
+        :requirement,
+        dependency: decimal,
+        app: "decimal",
+        requirement: "~> 0.0.1"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "postgrex",
+        build_tools: ["mix"]
+      ),
+    has_docs: true
+  )
 
-    Enum.each(1..10, fn(index) ->
-      nerves_pkg =
-        Package.build(justin, %{
-          "name" => "nerves_pkg_#{index}",
-          "meta" => %{
-            "maintainers" => ["Justin Schneck", "Frank Hunleth"],
-            "licenses" => ["Apache 2.0"],
-            "links" => %{"Github" => "http://example.com/github"},
-            "description" => lorem,
-            "extra" => %{
-              "list" => ["a", "b", "c"],
-              "foo" => %{"bar" => "baz"},
-              "key" => "value"}}})
-        |> HexWeb.Repo.insert!
+  postgrex_release =
+    insert(
+      :release,
+      package: postgrex,
+      version: "0.1.0",
+      requirements: [
+        build(
+          :requirement,
+          dependency: decimal,
+          app: "decimal",
+          requirement: "0.1.0"
+        )
+      ],
+      meta:
+        build(
+          :release_metadata,
+          app: "postgrex",
+          build_tools: ["mix"]
+        )
+    )
 
-      rel = Release.build(nerves_pkg, %{"version" => "0.0.1", "app" => "nerves_pkg_#{index}", "meta" => %{"app" => "nerves_pkg_#{index}", "build_tools" => ["mix"]}}, SampleData.checksum("nerves_pkg_#{index} 0.0.1")) |> HexWeb.Repo.insert!
+  insert(
+    :download,
+    release: postgrex_release,
+    downloads: 1_200_000,
+    day: Hexpm.Utils.utc_days_ago(180)
+  )
 
-      {:ok, yesterday} = Ecto.Type.load(Ecto.Date, HexWeb.Utils.yesterday)
-      %Download{release_id: rel.id, downloads: div(index, 2) + rem(index, 2), day: yesterday}
-      |> HexWeb.Repo.insert!
-    end)
-  end
+  insert(
+    :download,
+    release: postgrex_release,
+    downloads: 200_000,
+    day: Hexpm.Utils.utc_days_ago(90)
+  )
 
-  HexWeb.Repo.refresh_view(PackageDownload)
-  HexWeb.Repo.refresh_view(ReleaseDownload)
+  insert(
+    :download,
+    release: postgrex_release,
+    downloads: 56_000,
+    day: Hexpm.Utils.utc_days_ago(35)
+  )
+
+  insert(:download, release: postgrex_release, downloads: 1_000, day: Hexpm.Utils.utc_yesterday())
+
+  ecto =
+    insert(
+      :package,
+      name: "ecto",
+      package_owners: [build(:package_owner, user: jose)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: [],
+          links: %{"Github" => "http://example.com/github"},
+          description: lorem
+        )
+    )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.0.1",
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.0.2",
+    requirements: [
+      build(
+        :requirement,
+        dependency: postgrex,
+        app: "postgrex",
+        requirement: "~> 0.0.1"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.1.0",
+    requirements: [
+      build(
+        :requirement,
+        dependency: postgrex,
+        app: "postgrex",
+        requirement: "~> 0.0.2"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.1.1",
+    requirements: [
+      build(
+        :requirement,
+        dependency: postgrex,
+        app: "postgrex",
+        requirement: "~> 0.1.0"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.1.2",
+    requirements: [
+      build(
+        :requirement,
+        dependency: postgrex,
+        app: "postgrex",
+        requirement: "== 0.1.0"
+      ),
+      build(
+        :requirement,
+        dependency: decimal,
+        app: "decimal",
+        requirement: "0.1.0"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  insert(
+    :release,
+    package: ecto,
+    version: "0.1.3",
+    requirements: [
+      build(
+        :requirement,
+        dependency: postgrex,
+        app: "postgrex",
+        requirement: "0.1.0"
+      ),
+      build(
+        :requirement,
+        dependency: decimal,
+        app: "decimal",
+        requirement: "0.1.0"
+      )
+    ],
+    meta:
+      build(
+        :release_metadata,
+        app: "ecto",
+        build_tools: ["mix"]
+      )
+  )
+
+  rel =
+    insert(
+      :release,
+      package: ecto,
+      version: "0.2.0",
+      requirements: [
+        build(
+          :requirement,
+          dependency: postgrex,
+          app: "postgrex",
+          requirement: "~> 0.1.0"
+        ),
+        build(
+          :requirement,
+          dependency: decimal,
+          app: "decimal",
+          requirement: "~> 0.1.0"
+        )
+      ],
+      meta:
+        build(
+          :release_metadata,
+          app: "ecto",
+          build_tools: ["mix"]
+        ),
+      has_docs: true
+    )
+
+  insert(:download, release: rel, downloads: 1_500_000, day: Hexpm.Utils.utc_days_ago(180))
+  insert(:download, release: rel, downloads: 200_000, day: Hexpm.Utils.utc_days_ago(90))
+  insert(:download, release: rel, downloads: 1, day: Hexpm.Utils.utc_days_ago(45))
+  insert(:download, release: rel, downloads: 56_000, day: Hexpm.Utils.utc_days_ago(35))
+  insert(:download, release: rel, downloads: 1, day: Hexpm.Utils.utc_days_ago(2))
+  insert(:download, release: rel, downloads: 42, day: Hexpm.Utils.utc_yesterday())
+
+  myrepo = insert(:organization, name: "myrepo")
+
+  private =
+    insert(
+      :package,
+      organization_id: myrepo.id,
+      name: "private",
+      package_owners: [build(:package_owner, user: eric)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: [],
+          links: %{"Github" => "http://example.com/github"},
+          description: lorem
+        )
+    )
+
+  insert(
+    :release,
+    package: private,
+    version: "0.0.1",
+    meta:
+      build(
+        :release_metadata,
+        app: "private",
+        build_tools: ["mix"]
+      )
+  )
+
+  other_private =
+    insert(
+      :package,
+      organization_id: myrepo.id,
+      name: "other_private",
+      package_owners: [build(:package_owner, user: eric)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: [],
+          links: %{"Github" => "http://example.com/github"},
+          description: lorem
+        )
+    )
+
+  insert(
+    :release,
+    package: other_private,
+    version: "0.0.1",
+    meta:
+      build(
+        :release_metadata,
+        app: "other_private",
+        build_tools: ["mix"]
+      ),
+    requirements: [
+      build(
+        :requirement,
+        dependency: private,
+        app: "private",
+        requirement: ">= 0.0.0"
+      )
+    ]
+  )
+
+  insert(:organization_user, organization: myrepo, user: eric, role: "admin")
+
+  Enum.each(1..100, fn index ->
+    ups =
+      insert(
+        :package,
+        name: "ups_#{index}",
+        package_owners: [build(:package_owner, user: joe)],
+        meta:
+          build(
+            :package_metadata,
+            licenses: [],
+            links: %{"Github" => "http://example.com/github"},
+            description: lorem
+          )
+      )
+
+    rel1 =
+      insert(
+        :release,
+        package: ups,
+        version: "0.0.1",
+        meta:
+          build(
+            :release_metadata,
+            app: "ups",
+            build_tools: ["mix"]
+          )
+      )
+
+    rel2 =
+      insert(
+        :release,
+        package: ups,
+        version: "0.2.0",
+        requirements: [
+          build(
+            :requirement,
+            dependency: postgrex,
+            app: "postgrex",
+            requirement: "~> 0.1.0"
+          ),
+          build(
+            :requirement,
+            dependency: decimal,
+            app: "postgrex",
+            requirement: "~> 0.1.0"
+          )
+        ],
+        meta:
+          build(
+            :release_metadata,
+            app: "ups",
+            build_tools: ["mix"]
+          )
+      )
+
+    insert(:download, release: rel1, downloads: div(index, 2), day: Hexpm.Utils.utc_days_ago(180))
+    insert(:download, release: rel1, downloads: div(index, 2), day: Hexpm.Utils.utc_days_ago(90))
+    insert(:download, release: rel1, downloads: div(index, 2), day: Hexpm.Utils.utc_days_ago(35))
+    insert(:download, release: rel2, downloads: div(index, 2), day: Hexpm.Utils.utc_yesterday())
+  end)
+
+  nerves =
+    insert(
+      :package,
+      name: "nerves",
+      package_owners: [build(:package_owner, user: justin)],
+      meta:
+        build(
+          :package_metadata,
+          licenses: ["Apache 2.0"],
+          links: %{"Github" => "http://example.com/github"},
+          description: lorem,
+          extra: %{"foo" => %{"bar" => "baz"}, "key" => "value 1"}
+        )
+    )
+
+  rel =
+    insert(
+      :release,
+      package: nerves,
+      version: "0.0.1",
+      meta:
+        build(
+          :release_metadata,
+          app: "nerves",
+          build_tools: ["mix"]
+        )
+    )
+
+  insert(:download, release: rel, downloads: 20, day: Hexpm.Utils.utc_yesterday())
+
+  Enum.each(1..10, fn index ->
+    nerves_pkg =
+      insert(
+        :package,
+        name: "nerves_pkg_#{index}",
+        package_owners: [build(:package_owner, user: justin)],
+        meta:
+          build(
+            :package_metadata,
+            licenses: ["Apache 2.0"],
+            links: %{"Github" => "http://example.com/github"},
+            description: lorem,
+            extra: %{"list" => ["a", "b", "c"], "foo" => %{"bar" => "baz"}, "key" => "value"}
+          )
+      )
+
+    rel =
+      insert(
+        :release,
+        package: nerves_pkg,
+        version: "0.0.1",
+        meta:
+          build(
+            :release_metadata,
+            app: "nerves_pkg",
+            build_tools: ["mix"]
+          )
+      )
+
+    insert(
+      :download,
+      release: rel,
+      downloads: div(index, 2) + rem(index, 2),
+      day: Hexpm.Utils.utc_yesterday()
+    )
+  end)
+
+  Hexpm.Repo.refresh_view(PackageDependant)
+  Hexpm.Repo.refresh_view(PackageDownload)
+  Hexpm.Repo.refresh_view(ReleaseDownload)
 end)

@@ -1,90 +1,90 @@
-# HexWeb
+# Hexpm
 
-[![Build Status](https://travis-ci.org/hexpm/hex_web.svg?branch=master "Build Status")](http://travis-ci.org/hexpm/hex_web)
+[![Build Status](https://travis-ci.org/hexpm/hexpm.svg?branch=master "Build Status")](http://travis-ci.org/hexpm/hexpm)
 
 ## Contributing
 
-To contribute to HexWeb you need to properly set up your development environment.
+To contribute to Hexpm you need to properly set up your development environment.
 
-Also see the client repository: [hex](https://github.com/hexpm/hex). The client uses `hex_web` for integration tests, so `hex_web` needs to support all versions the client supports. Travis tests ensures that tests are run on all supported versions.
+Also see the client repository: [hex](https://github.com/hexpm/hex). The client uses `hexpm` for integration tests, so `hexpm` needs to support all versions the client supports. Travis tests ensures that tests are run on all supported versions.
+
+### Setup
+
+1. Run `mix setup` to install dependencies, create and seed database etc
+2. Run `mix test`
+3. Run `iex -S mix phx.server` and visit [http://localhost:4000/](http://localhost:4000/)
+
+After this succeeds you should be good to go!
+
+See [`setup` alias in mix.exs](./mix.exs) and sections below for more information or when you run into issues.
 
 ### PostgreSQL Modules And Version
 
-PostgreSQL version should be >= 9.4, as HexWeb uses the `jsonb` type, that is available from PostgreSQL 9.4 onward.
+PostgreSQL version should be >= 9.4, as Hexpm uses the `jsonb` type, that is available from PostgreSQL 9.4 onward.
 
-HexWeb requires the PostgreSQL modules [pg_trgm](http://www.postgresql.org/docs/9.4/static/pgtrgm.html) and [pgcrypto](http://www.postgresql.org/docs/9.4/static/pgcrypto.html) to be available.
+Hexpm requires the PostgreSQL modules [pg_trgm](http://www.postgresql.org/docs/9.4/static/pgtrgm.html) and [pgcrypto](http://www.postgresql.org/docs/9.4/static/pgcrypto.html) to be available.
 
 This is located in the "postgresql-contrib" package, however the package name can vary depending on your operating system. If the module is not installed the ecto migrations will fail.
 
 ### Database
 
-By default, HexWeb connects to a localhost PostgreSQL database `hexweb_dev` using the username `postgres` with the password `postgres`.
+By default, Hexpm connects to a localhost PostgreSQL database `hexpm_dev` using the username `postgres` with the password `postgres`.
 
 Create the database and user 'postgres' if not already done:
 
 ```sql
 CREATE USER postgres;
 ALTER USER postgres PASSWORD 'postgres';
-CREATE DATABASE hexweb_dev;
-GRANT ALL PRIVILEGES ON DATABASE hexweb_dev TO postgres;
+CREATE DATABASE hexpm_dev;
+GRANT ALL PRIVILEGES ON DATABASE hexpm_dev TO postgres;
 ALTER USER postgres WITH SUPERUSER;
-```
 
-If you want to use another database, user or password, you can specify the
-`DEV_DATABASE_URL` in the shell before doing development:
-
-```shell
-export DEV_DATABASE_URL=ecto://USER:PASSWORD@localhost/DATABASE
+-- if you also want to setup the test database
+CREATE DATABASE hexpm_test;
+GRANT ALL PRIVILEGES ON DATABASE hexpm_test TO postgres;
 ```
 
 Now you are fine to run the ecto migrations:
 
 ```shell
-mix ecto.migrate HexWeb.Repo
+mix ecto.migrate
 ```
 
 ### Sample Data
 
-Using the following command you can seed your local HexWeb instance with some sample data:
+Using the following command you can seed your local Hexpm instance with some sample data:
 
 ```shell
 mix run priv/repo/seeds.exs
 ```
 
-Also, all of the steps above (creating, migrating, and seeding the database) can be achieved by running:
+### Node Dependencies
+
+For assets compilation we need to install Node dependencies:
 
 ```shell
-mix ecto.setup
+cd assets && yarn install
 ```
 
-### Running HexWeb
+If you don't have yarn installed, `cd assets && npm install` will work too.
 
-Once the database is set up you can start HexWeb:
+### Running Hexpm
+
+Once the database is set up you can start Hexpm:
 
 ```shell
 # with console
-iex -S mix phoenix.server
+iex -S mix phx.server
 
 # without console
-mix phoenix.server
+mix phx.server
 ```
 
-HexWeb will be available at [http://localhost:4000/](http://localhost:4000/).
-
-### Running Tests
-
-By default, tests use a PostgreSQL called `hexweb_test` see above for setup.
-
-Again, if you want to use another database, user or password, you can specify the
-`TEST_DATABASE_URL` in the shell before running tests:
-
-```shell
-export TEST_DATABASE_URL='ecto://USER:PASSWORD@localhost/DATABASE'
-```
+Hexpm will be available at [http://localhost:4000/](http://localhost:4000/).
 
 ## License
 
-    Copyright 2015 Eric Meadows-Jönsson
+    Copyright 2015 Six Colors AB
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

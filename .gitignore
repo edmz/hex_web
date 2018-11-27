@@ -1,15 +1,13 @@
 /tmp
 /logs
-/src/safe_erl_term.erl
 
 /_build
 /db
 /deps
 /*.ez
 
-/node_modules
+/assets/node_modules
 
 erl_crash.dump
 
 /priv/static
-

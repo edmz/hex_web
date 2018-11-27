@@ -1,23 +1,30 @@
 use Mix.Config
 
-config :hex_web,
+config :hexpm,
+  tmp_dir: Path.expand("tmp/hex"),
+  private_key: File.read!("test/fixtures/private.pem"),
   user_confirm: false,
-  secret:       "796f75666f756e64746865686578",
-  docs_url:     System.get_env("HEX_DOCS_URL") || "http://localhost:4043",
-  cdn_url:      System.get_env("HEX_CDN_URL")  || "http://localhost:4043",
-  secret:       System.get_env("HEX_SECRET")   || "796f75666f756e64746865686578"
+  docs_url: "http://localhost:4043",
+  cdn_url: "http://localhost:4043"
 
-config :hex_web, HexWeb.Endpoint,
-  http: [port: 4043],
+config :hexpm, HexpmWeb.Endpoint,
+  http: [port: 4043, protocol_options: [max_keepalive: :infinity]],
   debug_errors: false
 
-config :hex_web, HexWeb.Repo,
-  adapter: Ecto.Adapters.Postgres,
+config :hexpm, HexWeb.Repo,
   username: "postgres",
   password: "postgres",
-  database: "hexweb_hex",
+  database: "hexpm_hex",
   hostname: "localhost",
   pool_size: 10
 
-config :logger,
-  level: :error
+config :hexpm, Hexpm.RepoBase,
+  username: "postgres",
+  password: "postgres",
+  database: "hexpm_hex",
+  hostname: "localhost",
+  pool_size: 10
+
+config :hexpm, Hexpm.Emails.Mailer, adapter: Bamboo.LocalAdapter
+
+config :logger, level: :error
